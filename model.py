@@ -8,7 +8,7 @@ def train(args):
     classes=36)
     optimizer=tf.keras.optimizers.Adam(learning_rate=args.lr)
     callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=3)
-    model.compile(optimizer=optimizer,loss=tf.keras.losses.CategoricalCrossentropy(),metrics=tf.keras.metrics.Accuracy())
+    model.compile(optimizer=optimizer,loss=tf.keras.losses.CategoricalCrossentropy(),metrics=[tf.keras.metrics.Accuracy()])
     model.fit(train_X,train_Y,epochs=args.epochs,callbacks=[callback],verbose='auto',validation_data=(test_x,test_y))
     model.save(os.path.join(args.path_to_model,'ASl_Classifier.keras'))   
     
