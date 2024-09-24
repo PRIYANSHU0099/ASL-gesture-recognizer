@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import keras
 import tensorflow as tf
-
+from sklearn.model_selection import train_test_split
 
 def load_images(path,categories):
     data_list = list()
@@ -17,23 +17,14 @@ def load_images(path,categories):
             data_list.append(pixels)
             labels.append(categories[label])
     data_list=np.array(data_list,dtype='float32')/255.0
-    labels=keras.utils.to_categorical(labels, 36)    
-    dataset=tf.data.Dataset.from_tensor_slices(data_list,labels)
-    dataset=dataset.shuffle(shuffle_size=1000)
-    return dataset
+    labels=keras.utils.to_categorical(labels, 36)
+    return data_list,labels
 
 def get_dataset_partitions(ds, ds_size,val_split=0.2, shuffle=True, shuffle_size=1000):
-    train_split = 1- val_split 
-    if shuffle:
-        ds = ds.shuffle(shuffle_size, seed=12)
-    
-    train_size = int(train_split * ds_size)
-    val_size = int(val_split * ds_size)
-    
-    train_ds = ds.take(train_size)    
-    val_ds = ds.skip(train_size).take(val_size)
-    
-    return train_ds, val_ds
+    train_split = 1- val_split
+    X,Y=ds
+    X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=val_split, random_state=42)
+    return (X_train,y_train),(X_test, y_test)
 
 def data_builder(args):
     train_path=args.train_path
@@ -75,19 +66,14 @@ def data_builder(args):
         "y":34,
         "z":35,
     }
-    train_dataset=load_images(train_path,categories)
-    size_=train_dataset.cardinality().numpy()
+    train_X,train_Y=load_images(train_path,categories)
     if args.mode=='test':
-        train_dataset = train_dataset.prefetch(buffer_size= tf.data.AUTOTUNE)
-        train_dataset.batch(1)
-        return train_dataset
+        return train_X,train_Y
     if args.val_path=='None':
-        train_dataset,val_dataset=get_dataset_partitions(ds=train_dataset,ds_size=size_,val_split=args.val_split)
+        size_=train_X.shape[0]
+        (train_X,train_Y),(test_x,test_y)=get_dataset_partitions(ds=(train_X,train_Y),ds_size=size_,val_split=args.val_split)
     else:
-        val_dataset=load_images(args.val_path,categories)    
+        (test_x,test_y)=load_images(args.val_path,categories)    
 
-    train_dataset = train_dataset.prefetch(buffer_size= tf.data.AUTOTUNE)
-    val_dataset = val_dataset.prefetch(buffer_size= tf.data.AUTOTUNE)
-    train_dataset.batch(args.batch_size)
-    return train_dataset,val_dataset
+    return (train_X,train_Y),(test_x,test_y)
     
